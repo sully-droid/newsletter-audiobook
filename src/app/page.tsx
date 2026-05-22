@@ -1,65 +1,204 @@
-import Image from "next/image";
+import { createClient } from "@/lib/supabase/server";
+import { VoiceCloneCard } from "@/components/VoiceCloneCard";
+import { GenerateForm } from "@/components/GenerateForm";
+import { LibraryList, type LibraryItem } from "@/components/LibraryList";
+import { CatReading } from "@/components/illustrations/CatReading";
+import { StillLife } from "@/components/illustrations/StillLife";
+import type { VoiceCloneStatus } from "@/lib/types";
 
-export default function Home() {
+export default async function Home() {
+  const supabase = createClient();
+
+  const [{ data: settings }, { data: rawAudio }] = await Promise.all([
+    supabase
+      .from("app_settings")
+      .select("elevenlabs_voice_id, voice_clone_status")
+      .eq("id", 1)
+      .single(),
+    supabase
+      .from("audio_generations")
+      .select(
+        "id, title, source_url, audio_path, duration_seconds, status, created_at"
+      )
+      .order("created_at", { ascending: false }),
+  ]);
+
+  const status: VoiceCloneStatus =
+    (settings?.voice_clone_status as VoiceCloneStatus) ?? "none";
+  const hasVoiceId = Boolean(settings?.elevenlabs_voice_id);
+  const generateDisabled = !hasVoiceId || status !== "ready";
+
+  const siteUrl =
+    process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+
+  const items: LibraryItem[] = (rawAudio ?? []).map((row) => ({
+    ...row,
+    audio_url: row.audio_path,
+  }));
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <div className="relative min-h-screen overflow-x-hidden">
+      {/* Header */}
+      <header className="relative z-10 mx-auto max-w-7xl px-6 pt-8 pb-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <Mark />
+            <span className="font-display text-base font-semibold tracking-tight text-[color:var(--foreground)]">
+              Newsletter Audiobook
+            </span>
+          </div>
+          <nav className="hidden sm:flex items-center gap-5 text-xs font-semibold uppercase tracking-wider text-[color:var(--foreground-muted)]">
+            <span className="text-[color:var(--foreground)]">Studio</span>
+            <a
+              href="https://elevenlabs.io"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-[color:var(--foreground)] transition-colors"
+            >
+              Powered by ElevenLabs ↗
+            </a>
+          </nav>
+        </div>
+      </header>
+
+      {/* Hero */}
+      <section className="relative z-10 mx-auto max-w-7xl px-6 pt-10 pb-6">
+        <div className="max-w-2xl mx-auto text-center">
+          <p className="font-display italic text-sm text-[color:var(--accent-deep)] mb-3 tracking-wide">
+            for newsletter writers, by newsletter writers
+          </p>
+          <h1 className="font-display text-5xl sm:text-6xl font-medium text-[color:var(--foreground)] tracking-tight leading-[1.05]">
+            Your newsletter,
+            <br />
+            <span className="italic text-[color:var(--accent-deep)]">
+              in your own voice.
+            </span>
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="mt-5 text-base sm:text-lg text-[color:var(--foreground-muted)] leading-relaxed max-w-xl mx-auto">
+            Clone your voice once with a short audio sample. Then turn any
+            newsletter post into a polished audiobook your readers can listen to
+            anywhere.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+      </section>
+
+      {/* Main grid: still-life | app | cat */}
+      <main className="relative z-10 mx-auto max-w-7xl px-6 pb-20">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_minmax(0,640px)_1fr] gap-8 items-start">
+          {/* Left vignette — hidden on mobile */}
+          <aside className="hidden lg:block sticky top-12 self-start pt-4">
+            <StillLife className="w-full max-w-[300px] mx-auto" />
+            <p className="mt-4 text-center font-display italic text-sm text-[color:var(--foreground-subtle)]">
+              Words become sound.
+            </p>
+          </aside>
+
+          {/* Center — the actual app */}
+          <div className="space-y-6 min-w-0">
+            <VoiceCloneCard status={status} hasVoiceId={hasVoiceId} />
+            <GenerateForm
+              disabled={generateDisabled}
+              disabledReason={
+                !hasVoiceId
+                  ? "Clone a voice above first."
+                  : status === "processing"
+                  ? "Voice clone is still processing. Hang tight."
+                  : status === "failed"
+                  ? "Voice clone failed. Upload a new sample above."
+                  : undefined
+              }
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+            <section>
+              <div className="flex items-baseline justify-between mb-3">
+                <h2 className="font-display text-2xl font-medium text-[color:var(--foreground)] tracking-tight">
+                  Library
+                </h2>
+                {items.length > 0 && (
+                  <span className="text-xs font-semibold uppercase tracking-wider text-[color:var(--foreground-subtle)]">
+                    {items.length} {items.length === 1 ? "episode" : "episodes"}
+                  </span>
+                )}
+              </div>
+              <LibraryList items={items} siteUrl={siteUrl} />
+            </section>
+          </div>
+
+          {/* Right cat — hidden on mobile */}
+          <aside className="hidden lg:block sticky top-12 self-start pt-4">
+            <CatReading className="w-full max-w-[320px] mx-auto" />
+            <p className="mt-4 text-center font-display italic text-sm text-[color:var(--foreground-subtle)]">
+              Even cats subscribe.
+            </p>
+          </aside>
+        </div>
+
+        {/* Mobile-only inline illustrations */}
+        <div className="lg:hidden mt-12 grid grid-cols-2 gap-4 max-w-md mx-auto opacity-90">
+          <StillLife className="w-full" />
+          <CatReading className="w-full" />
         </div>
       </main>
+
+      {/* Footer */}
+      <footer className="relative z-10 border-t border-[color:var(--border)] mx-auto max-w-7xl px-6 py-8 mt-8">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-[color:var(--foreground-subtle)]">
+          <p>
+            Built with Next.js, Supabase, and the ElevenLabs API. A portfolio
+            project by Sully Solomon.
+          </p>
+          <p className="font-display italic">
+            Read aloud, in your own voice.
+          </p>
+        </div>
+      </footer>
     </div>
+  );
+}
+
+function Mark() {
+  // Little hand-drawn mark — speech-bubble + sound waves
+  return (
+    <svg
+      width="32"
+      height="32"
+      viewBox="0 0 32 32"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path
+        d="M 5 8 q 0 -4 4 -4 l 14 0 q 4 0 4 4 l 0 10 q 0 4 -4 4 l -10 0 l -6 6 l 0 -6 q -2 -1 -2 -4 z"
+        fill="#e8754c"
+        stroke="#1f1a14"
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
+      <line
+        x1="11"
+        y1="13"
+        x2="11"
+        y2="17"
+        stroke="#fbf7ee"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+      <line
+        x1="16"
+        y1="11"
+        x2="16"
+        y2="19"
+        stroke="#fbf7ee"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+      <line
+        x1="21"
+        y1="13"
+        x2="21"
+        y2="17"
+        stroke="#fbf7ee"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
   );
 }

@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Generated audio files — keep the directory, ignore its contents
+public/audio/*
+!public/audio/.gitkeep
