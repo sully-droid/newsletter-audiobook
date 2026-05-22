@@ -37,7 +37,10 @@ create index if not exists audio_generations_created_at_idx
   on public.audio_generations (created_at desc);
 
 -- =============================================================================
--- No auth, no RLS — single-user demo mode
+-- No auth, no RLS — single-user demo mode.
+-- Supabase's database linter will flag both tables ("RLS Disabled in Public");
+-- that is INTENTIONAL here. There is no user model; all data is shared.
+-- If you re-introduce auth, also re-enable RLS and add per-user policies.
 -- =============================================================================
 alter table public.app_settings disable row level security;
 alter table public.audio_generations disable row level security;

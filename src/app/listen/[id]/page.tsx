@@ -2,6 +2,10 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 
+// Read from Supabase per request — listen pages depend on current row state.
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 type Params = Promise<{ id: string }>;
 
 export async function generateMetadata({ params }: { params: Params }) {

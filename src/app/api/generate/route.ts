@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { writeFile, mkdir } from "node:fs/promises";
-import path from "node:path";
+import { put } from "@vercel/blob";
 import { createClient } from "@/lib/supabase/server";
 import {
   generateSpeechForLongText,
@@ -8,10 +7,6 @@ import {
 } from "@/lib/elevenlabs";
 
 export const maxDuration = 300;
-
-// Audio files are written to public/audio/ so Next.js serves them at /audio/{id}.mp3.
-// Local-dev / single-instance only — for production, swap to Vercel Blob.
-const AUDIO_DIR = path.join(process.cwd(), "public", "audio");
 
 export async function POST(request: Request) {
   const supabase = createClient();
@@ -76,19 +71,21 @@ export async function POST(request: Request) {
       text,
     });
 
-    await mkdir(AUDIO_DIR, { recursive: true });
-    const filename = `${row.id}.mp3`;
-    const filepath = path.join(AUDIO_DIR, filename);
-    await writeFile(filepath, audio);
+    // Upload MP3 to Vercel Blob (public). On Vercel deployments
+    // BLOB_READ_WRITE_TOKEN is auto-injected after you provision a Blob store.
+    const blob = await put(`audio/${row.id}.mp3`, Buffer.from(audio), {
+      access: "public",
+      contentType: "audio/mpeg",
+      addRandomSuffix: false,
+      allowOverwrite: true,
+    });
 
-    // Public path served by Next.js from /public
-    const audioPath = `/audio/${filename}`;
     const duration = estimateDurationSeconds(text);
 
     const { error: updateError } = await supabase
       .from("audio_generations")
       .update({
-        audio_path: audioPath,
+        audio_path: blob.url,
         duration_seconds: duration,
         status: "ready",
       })
@@ -96,7 +93,7 @@ export async function POST(request: Request) {
 
     if (updateError) throw new Error(updateError.message);
 
-    console.log(`[generate] success: ${audioPath} (${audio.length} bytes)`);
+    console.log(`[generate] success: ${blob.url} (${audio.length} bytes)`);
 
     return NextResponse.json({ id: row.id, status: "ready" });
   } catch (err) {

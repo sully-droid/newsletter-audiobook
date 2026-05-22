@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { unlink } from "node:fs/promises";
-import path from "node:path";
+import { del } from "@vercel/blob";
 import { createClient } from "@/lib/supabase/server";
 
 export async function DELETE(
@@ -21,14 +20,15 @@ export async function DELETE(
   }
 
   if (row.audio_path) {
-    // audio_path looks like "/audio/<id>.mp3"
-    const filename = row.audio_path.split("/").pop();
-    if (filename) {
-      try {
-        await unlink(path.join(process.cwd(), "public", "audio", filename));
-      } catch {
-        // file already gone — fine
+    try {
+      // audio_path is the full Vercel Blob URL (post-deploy).
+      // For any leftover local-dev rows it might be a /audio/... path —
+      // those don't need a remote delete.
+      if (row.audio_path.startsWith("http")) {
+        await del(row.audio_path);
       }
+    } catch (err) {
+      console.warn("[audio:delete] blob delete failed:", err);
     }
   }
 

@@ -2,9 +2,13 @@ import { createClient } from "@/lib/supabase/server";
 import { VoiceCloneCard } from "@/components/VoiceCloneCard";
 import { GenerateForm } from "@/components/GenerateForm";
 import { LibraryList, type LibraryItem } from "@/components/LibraryList";
-import { CatReading } from "@/components/illustrations/CatReading";
-import { StillLife } from "@/components/illustrations/StillLife";
+import { CatVideo } from "@/components/CatVideo";
 import type { VoiceCloneStatus } from "@/lib/types";
+
+// The page reads from Supabase on every request — never prerender it at
+// build time, otherwise new generations don't appear until the next deploy.
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default async function Home() {
   const supabase = createClient();
@@ -82,60 +86,56 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Main grid: still-life | app | cat */}
-      <main className="relative z-10 mx-auto max-w-7xl px-6 pb-20">
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_minmax(0,640px)_1fr] gap-8 items-start">
-          {/* Left vignette — hidden on mobile */}
-          <aside className="hidden lg:block sticky top-12 self-start pt-4">
-            <StillLife className="w-full max-w-[300px] mx-auto" />
-            <p className="mt-4 text-center font-display italic text-sm text-[color:var(--foreground-subtle)]">
-              Words become sound.
-            </p>
-          </aside>
-
-          {/* Center — the actual app */}
-          <div className="space-y-6 min-w-0">
-            <VoiceCloneCard status={status} hasVoiceId={hasVoiceId} />
-            <GenerateForm
-              disabled={generateDisabled}
-              disabledReason={
-                !hasVoiceId
-                  ? "Clone a voice above first."
-                  : status === "processing"
-                  ? "Voice clone is still processing. Hang tight."
-                  : status === "failed"
-                  ? "Voice clone failed. Upload a new sample above."
-                  : undefined
-              }
-            />
-            <section>
-              <div className="flex items-baseline justify-between mb-3">
-                <h2 className="font-display text-2xl font-medium text-[color:var(--foreground)] tracking-tight">
-                  Library
-                </h2>
-                {items.length > 0 && (
-                  <span className="text-xs font-semibold uppercase tracking-wider text-[color:var(--foreground-subtle)]">
-                    {items.length} {items.length === 1 ? "episode" : "episodes"}
-                  </span>
-                )}
-              </div>
-              <LibraryList items={items} siteUrl={siteUrl} />
-            </section>
-          </div>
-
-          {/* Right cat — hidden on mobile */}
-          <aside className="hidden lg:block sticky top-12 self-start pt-4">
-            <CatReading className="w-full max-w-[320px] mx-auto" />
-            <p className="mt-4 text-center font-display italic text-sm text-[color:var(--foreground-subtle)]">
-              Even cats subscribe.
-            </p>
-          </aside>
+      {/* App centered; cat floats freely in the right whitespace on desktop */}
+      <main className="relative z-10 pb-20">
+        {/* Centered app column */}
+        <div className="mx-auto max-w-[640px] px-6 space-y-6">
+          <VoiceCloneCard status={status} hasVoiceId={hasVoiceId} />
+          <GenerateForm
+            disabled={generateDisabled}
+            disabledReason={
+              !hasVoiceId
+                ? "Clone a voice above first."
+                : status === "processing"
+                ? "Voice clone is still processing. Hang tight."
+                : status === "failed"
+                ? "Voice clone failed. Upload a new sample above."
+                : undefined
+            }
+          />
+          <section>
+            <div className="flex items-baseline justify-between mb-3">
+              <h2 className="font-display text-2xl font-medium text-[color:var(--foreground)] tracking-tight">
+                Library
+              </h2>
+              {items.length > 0 && (
+                <span className="text-xs font-semibold uppercase tracking-wider text-[color:var(--foreground-subtle)]">
+                  {items.length} {items.length === 1 ? "episode" : "episodes"}
+                </span>
+              )}
+            </div>
+            <LibraryList items={items} siteUrl={siteUrl} />
+          </section>
         </div>
 
-        {/* Mobile-only inline illustrations */}
-        <div className="lg:hidden mt-12 grid grid-cols-2 gap-4 max-w-md mx-auto opacity-90">
-          <StillLife className="w-full" />
-          <CatReading className="w-full" />
+        {/* Locked-in-place cat — absolute, doesn't follow scroll.
+           Centered horizontally in the right-side whitespace.
+           Width scales with viewport but stays within the whitespace. */}
+        <div
+          aria-hidden="true"
+          className="hidden lg:block absolute top-[100px] pointer-events-none"
+          style={{
+            left: "calc(75vw + 160px)",
+            transform: "translateX(-50%)",
+            width: "clamp(320px, 40vw, 620px)",
+          }}
+        >
+          <CatVideo />
+        </div>
+
+        {/* Mobile: drop the video inline below the app */}
+        <div className="lg:hidden mt-12 max-w-sm mx-auto px-6">
+          <CatVideo />
         </div>
       </main>
 
